@@ -55,7 +55,6 @@
       box-sizing: border-box;
       font-size: 14px;
     }
-    .hidden { display: none; }
     .erro { color: #ff4d4d; font-size: 13px; margin-top: 5px; }
     .bloqueado {
       font-size: 18px;
@@ -105,10 +104,11 @@
       <div class="titulo">📋 Preencha seus dados para ativar seu acesso:</div>
       <input type="text" id="nome" placeholder="Nome completo">
       <input type="text" id="cpf" placeholder="CPF" oninput="formatarCPF(this)">
-      <input type="date" id="nascimento" placeholder="Data de nascimento">
+      <input type="date" id="nascimento">
       <input type="text" id="telefone" placeholder="Telefone" oninput="formatarTelefone(this)">
       <input type="email" id="email" placeholder="E-mail">
       <input type="password" id="senha" placeholder="Criar senha">
+      <input type="password" id="confirmarSenha" placeholder="Confirmar senha">
       <div id="erro" class="erro"></div>
       <button onclick="enviarCadastro()">Cadastrar</button>
     </div>
@@ -185,11 +185,17 @@
       const telefone = document.getElementById('telefone').value.trim();
       const email = document.getElementById('email').value.trim().toLowerCase();
       const senha = document.getElementById('senha').value;
+      const confirmarSenha = document.getElementById('confirmarSenha').value;
       const erro = document.getElementById('erro');
       erro.textContent = '';
 
-      if (!nome || !validarCPF(cpf) || !nascimento || !telefone || !email || senha.length < 6) {
+      if (!nome || !validarCPF(cpf) || !nascimento || !telefone || !email || senha.length < 6 || confirmarSenha.length < 6) {
         erro.textContent = 'Preencha todos os campos corretamente (senha 6+ e CPF válido).';
+        return;
+      }
+
+      if (senha !== confirmarSenha) {
+        erro.textContent = 'As senhas não coincidem.';
         return;
       }
 

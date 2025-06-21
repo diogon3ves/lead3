@@ -22,12 +22,8 @@
       padding: 20px;
       text-align: center;
     }
-    .etapa {
-      display: none;
-    }
-    .etapa.active {
-      display: block;
-    }
+    .etapa { display: none; }
+    .etapa.active { display: block; }
     .titulo {
       font-size: 18px;
       margin-bottom: 20px;
@@ -61,6 +57,14 @@
     }
     .hidden { display: none; }
     .erro { color: #ff4d4d; font-size: 13px; margin-top: 5px; }
+    .bloqueado {
+      font-size: 18px;
+      color: #ff4d4d;
+      background-color: #1a1a1a;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(255,0,0,0.2);
+    }
   </style>
 </head>
 <body>
@@ -93,6 +97,10 @@
       <button onclick="proximaEtapa()">Avançar</button>
     </div>
 
+    <div id="etapaRecusado" class="etapa">
+      <div class="bloqueado">🚫 Infelizmente essa vaga não é para você!<br><br>Obrigado pelo seu interesse.</div>
+    </div>
+
     <div id="etapa5" class="etapa">
       <div class="titulo">📋 Preencha seus dados para ativar seu acesso:</div>
       <input type="text" id="nome" placeholder="Nome completo">
@@ -117,7 +125,7 @@
     const baseUrl = "https://yzqxhwbrvibckucotsko.supabase.co";
     const apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl6cXhod2JydmliY2t1Y290c2tvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY4MTI0MTYsImV4cCI6MjA2MjM4ODQxNn0.HQRYCLTT7gRHTndtbly_klN8Oz98sRtOFHRrotVLMbc";
 
-    const respostas = {};
+    let respostas = {};
     let etapa = 0;
 
     function proximaEtapa() {
@@ -128,17 +136,22 @@
 
     function responder(chave, valor) {
       respostas[chave] = valor;
+      if (chave === 'interesse' && valor === 'Não' && respostas.trabalha === 'Não') {
+        document.getElementById(`etapa${etapa}`).classList.remove('active');
+        document.getElementById('etapaRecusado').classList.add('active');
+        return;
+      }
       proximaEtapa();
     }
 
     function formatarCPF(campo) {
       let valor = campo.value.replace(/\D/g, '').slice(0, 11);
-      campo.value = valor.replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/, '$1.$2.$3-$4');
+      campo.value = valor.replace(/(\\d{3})(\\d{3})(\\d{3})(\\d{0,2})/, '$1.$2.$3-$4');
     }
 
     function formatarTelefone(campo) {
       let valor = campo.value.replace(/\D/g, '').slice(0, 11);
-      campo.value = valor.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3');
+      campo.value = valor.replace(/(\\d{2})(\\d{5})(\\d{0,4})/, '($1) $2-$3');
     }
 
     function validarCPF(cpf) {
@@ -154,6 +167,15 @@
       let dig2 = 11 - (soma % 11);
       if (dig2 >= 10) dig2 = 0;
       return dig2 === parseInt(cpf.charAt(10));
+    }
+
+    async function verificarDuplicado(campo, valor) {
+      const url = `${baseUrl}/rest/v1/Usuario?select=id&${campo}=eq.${encodeURIComponent(valor)}`;
+      const res = await fetch(url, {
+        headers: { apikey: apiKey, Authorization: `Bearer ${apiKey}` }
+      });
+      const dados = await res.json();
+      return dados.length > 0;
     }
 
     async function enviarCadastro() {
@@ -176,6 +198,10 @@
         erro.textContent = 'Você precisa ter 18 anos ou mais para continuar.';
         return;
       }
+
+      if (await verificarDuplicado('cpf', cpf)) return erro.textContent = 'Este CPF já está cadastrado.';
+      if (await verificarDuplicado('telefone', telefone)) return erro.textContent = 'Este telefone já está cadastrado.';
+      if (await verificarDuplicado('email', email)) return erro.textContent = 'Este e-mail já está cadastrado.';
 
       const id = crypto.randomUUID();
       const codigoPublico = gerarCodigoPublico();

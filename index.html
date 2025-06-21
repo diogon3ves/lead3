@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cadastro Plataforma</title>
   <style>
     body {
@@ -123,7 +123,7 @@
   <script>
     const bcrypt = dcodeIO.bcrypt;
     const baseUrl = "https://yzqxhwbrvibckucotsko.supabase.co";
-    const apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."; // sua chave já está correta
+    const apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl6cXhod2JydmliY2t1Y290c2tvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY4MTI0MTYsImV4cCI6MjA2MjM4ODQxNn0.HQRYCLTT7gRHTndtbly_klN8Oz98sRtOFHRrotVLMbc";
 
     let respostas = {};
     let etapa = 0;
@@ -146,12 +146,16 @@
 
     function formatarCPF(campo) {
       let valor = campo.value.replace(/\D/g, '').slice(0, 11);
-      campo.value = valor.replace(/(\\d{3})(\\d{3})(\\d{3})(\\d{0,2})/, '$1.$2.$3-$4');
+      campo.value = valor.replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/, '$1.$2.$3-$4');
     }
 
     function formatarTelefone(campo) {
       let valor = campo.value.replace(/\D/g, '').slice(0, 11);
-      campo.value = valor.replace(/(\\d{2})(\\d{5})(\\d{0,4})/, '($1) $2-$3');
+      if (valor.length <= 10) {
+        campo.value = valor.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');
+      } else {
+        campo.value = valor.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3');
+      }
     }
 
     function validarCPF(cpf) {
@@ -214,8 +218,16 @@
       const senhaHash = await bcrypt.hash(senha, 10);
 
       const usuario = {
-        id, nome, cpf, dataNascimento: nascimento, telefone, email,
-        senha: senhaHash, codigoPublico, criadoEm: new Date().toISOString(), ativo: true
+        id,
+        nome,
+        cpf,
+        dataNascimento: nascimento,
+        telefone,
+        email,
+        senha: senhaHash,
+        codigoPublico,
+        criadoEm: new Date().toISOString(),
+        ativo: true
       };
 
       const res = await fetch(`${baseUrl}/rest/v1/Usuario`, {

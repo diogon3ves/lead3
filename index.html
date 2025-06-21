@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cadastro Plataforma</title>
+  <style>
+    body {
+      background-color: #111;
+      color: white;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .container {
+      width: 100%;
+      max-width: 400px;
+      padding: 20px;
+      text-align: center;
+    }
+    .etapa {
+      display: none;
+    }
+    .etapa.active {
+      display: block;
+    }
+    .titulo {
+      font-size: 18px;
+      margin-bottom: 20px;
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      font-size: 16px;
+      margin-top: 10px;
+      border: none;
+      border-radius: 8px;
+      background-color: #00ff88;
+      color: black;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    input {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+      font-size: 14px;
+    }
+    .hidden { display: none; }
+    .erro { color: #ff4d4d; font-size: 13px; margin-top: 5px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="etapa0" class="etapa active">
+      <div class="titulo">Olá! Estamos abrindo algumas vagas para nossa plataforma!<br>Trabalho 100% online, apenas para você fazer um extra!</div>
+      <button onclick="proximaEtapa()">Começar</button>
+    </div>
+
+    <div id="etapa1" class="etapa">
+      <div class="titulo">Você trabalha?</div>
+      <button onclick="responder('trabalha', 'Sim')">Sim</button>
+      <button onclick="responder('trabalha', 'Não')">Não</button>
+    </div>
+
+    <div id="etapa2" class="etapa">
+      <div class="titulo">Você usa seu celular com frequência?</div>
+      <button onclick="responder('celular', 'Sim')">Sim</button>
+      <button onclick="responder('celular', 'Não')">Não</button>
+    </div>
+
+    <div id="etapa3" class="etapa">
+      <div class="titulo">Tem interesse em fazer dinheiro pela internet?</div>
+      <button onclick="responder('interesse', 'Sim')">Sim</button>
+      <button onclick="responder('interesse', 'Não')">Não</button>
+    </div>
+
+    <div id="etapa4" class="etapa">
+      <div class="titulo">Legal! Com base nas suas respostas, você poderá fazer uma renda extra!</div>
+      <button onclick="proximaEtapa()">Avançar</button>
+    </div>
+
+    <div id="etapa5" class="etapa">
+      <div class="titulo">Preencha seus dados para entrar:</div>
+      <input type="text" id="nome" placeholder="Nome completo">
+      <input type="text" id="cpf" placeholder="CPF">
+      <input type="date" id="nascimento" placeholder="Data de nascimento">
+      <input type="email" id="email" placeholder="E-mail">
+      <input type="password" id="senha" placeholder="Criar senha">
+      <div id="erro" class="erro"></div>
+      <button onclick="enviarCadastro()">Entre em contato agora para começar!</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bcryptjs@2.4.3/dist/bcrypt.min.js"></script>
+  <script>
+    const bcrypt = dcodeIO.bcrypt;
+    const baseUrl = "https://yzqxhwbrvibckucotsko.supabase.co";
+    const apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl6cXhod2JydmliY2t1Y290c2tvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY4MTI0MTYsImV4cCI6MjA2MjM4ODQxNn0.HQRYCLTT7gRHTndtbly_klN8Oz98sRtOFHRrotVLMbc";
+
+    const respostas = {};
+    let etapa = 0;
+
+    function proximaEtapa() {
+      document.getElementById(`etapa${etapa}`).classList.remove('active');
+      etapa++;
+      document.getElementById(`etapa${etapa}`).classList.add('active');
+    }
+
+    function responder(chave, valor) {
+      respostas[chave] = valor;
+      proximaEtapa();
+    }
+
+    function validarCPF(cpf) {
+      cpf = cpf.replace(/[^\d]+/g, '');
+      if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
+      let soma = 0;
+      for (let i = 0; i < 9; i++) soma += parseInt(cpf.charAt(i)) * (10 - i);
+      let dig1 = 11 - (soma % 11);
+      if (dig1 >= 10) dig1 = 0;
+      if (dig1 !== parseInt(cpf.charAt(9))) return false;
+      soma = 0;
+      for (let i = 0; i < 10; i++) soma += parseInt(cpf.charAt(i)) * (11 - i);
+      let dig2 = 11 - (soma % 11);
+      if (dig2 >= 10) dig2 = 0;
+      return dig2 === parseInt(cpf.charAt(10));
+    }
+
+    async function enviarCadastro() {
+      const nome = document.getElementById('nome').value.trim();
+      const cpf = document.getElementById('cpf').value.trim();
+      const nascimento = document.getElementById('nascimento').value;
+      const email = document.getElementById('email').value.trim().toLowerCase();
+      const senha = document.getElementById('senha').value;
+      const erro = document.getElementById('erro');
+      erro.textContent = '';
+
+      if (!nome || !validarCPF(cpf) || !nascimento || !email || senha.length < 6) {
+        erro.textContent = 'Preencha todos os campos corretamente (senha 6+ e CPF válido).';
+        return;
+      }
+
+      const maiorDeIdade = new Date().getFullYear() - new Date(nascimento).getFullYear() >= 18;
+      if (!maiorDeIdade) {
+        erro.textContent = 'Você precisa ter 18 anos ou mais para continuar.';
+        return;
+      }
+
+      const id = crypto.randomUUID();
+      const codigoPublico = gerarCodigoPublico();
+      const senhaHash = await bcrypt.hash(senha, 10);
+
+      const usuario = {
+        id,
+        nome,
+        cpf,
+        dataNascimento: nascimento,
+        email,
+        senha: senhaHash,
+        codigoPublico,
+        criadoEm: new Date().toISOString(),
+        ativo: true
+      };
+
+      const res = await fetch(`${baseUrl}/rest/v1/Usuario`, {
+        method: 'POST',
+        headers: {
+          apikey: apiKey,
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          Prefer: 'return=minimal'
+        },
+        body: JSON.stringify(usuario)
+      });
+
+      if (res.ok) {
+        await fetch(`${baseUrl}/rest/v1/BonusCadastro`, {
+          method: 'POST',
+          headers: {
+            apikey: apiKey,
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+            Prefer: 'return=minimal'
+          },
+          body: JSON.stringify({
+            id: crypto.randomUUID(),
+            usuarioId: id,
+            valor: 5,
+            criadoEm: new Date().toISOString()
+          })
+        });
+        window.location.href = 'https://wa.me/5599999999999?text=Ol%C3%A1%2C%20tenho%20interesse%20em%20participar%20da%20plataforma%20para%20fazer%20uma%20renda%20extra!';
+      } else {
+        erro.textContent = 'Erro ao cadastrar. Tente novamente.';
+      }
+    }
+
+    function gerarCodigoPublico(tamanho = 6) {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      return Array.from({ length: tamanho }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    }
+  </script>
+</body>
+</html>

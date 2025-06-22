@@ -73,20 +73,17 @@
       <button onclick="proximaEtapa()">Quero Participar</button>
     </div>
 
-    <div id="etapa1" class="etapa">
-      <div class="titulo">Você trabalha?</div>
+    <div id="etapa1" class="etapa"><div class="titulo">Você trabalha?</div>
       <button onclick="responder('trabalha', 'Sim')">Sim</button>
       <button onclick="responder('trabalha', 'Não')">Não</button>
     </div>
 
-    <div id="etapa2" class="etapa">
-      <div class="titulo">Você usa seu celular com frequência?</div>
+    <div id="etapa2" class="etapa"><div class="titulo">Você usa seu celular com frequência?</div>
       <button onclick="responder('celular', 'Sim')">Sim</button>
       <button onclick="responder('celular', 'Não')">Não</button>
     </div>
 
-    <div id="etapa3" class="etapa">
-      <div class="titulo">Tem interesse em fazer dinheiro pela internet?</div>
+    <div id="etapa3" class="etapa"><div class="titulo">Tem interesse em fazer dinheiro pela internet?</div>
       <button onclick="responder('interesse', 'Sim')">Sim</button>
       <button onclick="responder('interesse', 'Não')">Não</button>
     </div>
@@ -124,17 +121,11 @@
     const bcrypt = dcodeIO.bcrypt;
     const baseUrl = "https://yzqxhwbrvibckucotsko.supabase.co";
     const apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl6cXhod2JydmliY2t1Y290c2tvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY4MTI0MTYsImV4cCI6MjA2MjM4ODQxNn0.HQRYCLTT7gRHTndtbly_klN8Oz98sRtOFHRrotVLMbc";
+    const params = new URLSearchParams(window.location.search);
+    const codigoIndicador = params.get("id");
 
     let respostas = {};
     let etapa = 0;
-    let codigoIndicador = null;
-
-    window.onload = () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.has('id')) {
-        codigoIndicador = urlParams.get('id');
-      }
-    };
 
     function proximaEtapa() {
       document.getElementById(`etapa${etapa}`).classList.remove('active');
@@ -159,11 +150,31 @@
 
     function formatarTelefone(campo) {
       let valor = campo.value.replace(/\D/g, '').slice(0, 11);
-      if (valor.length <= 10) {
-        campo.value = valor.replace(/(\\d{2})(\\d{4})(\\d{0,4})/, '($1) $2-$3');
-      } else {
-        campo.value = valor.replace(/(\\d{2})(\\d{5})(\\d{0,4})/, '($1) $2-$3');
-      }
+      campo.value = valor.replace(/(\\d{2})(\\d{5})(\\d{0,4})/, '($1) $2-$3');
+    }
+
+    function validarCPF(cpf) {
+      cpf = cpf.replace(/[^\d]+/g, '');
+      if (cpf.length !== 11 || /^(\d)\\1+$/.test(cpf)) return false;
+      let soma = 0;
+      for (let i = 0; i < 9; i++) soma += parseInt(cpf.charAt(i)) * (10 - i);
+      let dig1 = 11 - (soma % 11);
+      if (dig1 >= 10) dig1 = 0;
+      if (dig1 !== parseInt(cpf.charAt(9))) return false;
+      soma = 0;
+      for (let i = 0; i < 10; i++) soma += parseInt(cpf.charAt(i)) * (11 - i);
+      let dig2 = 11 - (soma % 11);
+      if (dig2 >= 10) dig2 = 0;
+      return dig2 === parseInt(cpf.charAt(10));
+    }
+
+    async function verificarDuplicado(campo, valor) {
+      const url = `${baseUrl}/rest/v1/Usuario?select=id&${campo}=eq.${encodeURIComponent(valor)}`;
+      const res = await fetch(url, {
+        headers: { apikey: apiKey, Authorization: `Bearer ${apiKey}` }
+      });
+      const dados = await res.json();
+      return dados.length > 0;
     }
 
     async function enviarCadastro() {
@@ -177,26 +188,33 @@
       const erro = document.getElementById('erro');
       erro.textContent = '';
 
-      if (!nome || !cpf || !nascimento || !telefone || !email || senha.length < 6 || senha !== confirmarSenha) {
+      if (!nome || !validarCPF(cpf) || !nascimento || !telefone || !email || senha.length < 6 || confirmarSenha.length < 6) {
         erro.textContent = 'Preencha todos os campos corretamente.';
         return;
       }
+
+      if (senha !== confirmarSenha) {
+        erro.textContent = 'As senhas não coincidem.';
+        return;
+      }
+
+      const maiorDeIdade = new Date().getFullYear() - new Date(nascimento).getFullYear() >= 18;
+      if (!maiorDeIdade) {
+        erro.textContent = 'Você precisa ter 18 anos ou mais.';
+        return;
+      }
+
+      if (await verificarDuplicado('cpf', cpf)) return erro.textContent = 'Este CPF já está cadastrado.';
+      if (await verificarDuplicado('telefone', telefone)) return erro.textContent = 'Este telefone já está cadastrado.';
+      if (await verificarDuplicado('email', email)) return erro.textContent = 'Este e-mail já está cadastrado.';
 
       const id = crypto.randomUUID();
       const codigoPublico = gerarCodigoPublico();
       const senhaHash = await bcrypt.hash(senha, 10);
 
       const usuario = {
-        id,
-        nome,
-        cpf,
-        dataNascimento: nascimento,
-        telefone,
-        email,
-        senha: senhaHash,
-        codigoPublico,
-        criadoEm: new Date().toISOString(),
-        ativo: true
+        id, nome, cpf, dataNascimento: nascimento, telefone,
+        email, senha: senhaHash, codigoPublico, criadoEm: new Date().toISOString(), ativo: true
       };
 
       const res = await fetch(`${baseUrl}/rest/v1/Usuario`, {
@@ -211,14 +229,27 @@
       });
 
       if (res.ok) {
+        await fetch(`${baseUrl}/rest/v1/BonusCadastro`, {
+          method: 'POST',
+          headers: {
+            apikey: apiKey,
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+            Prefer: 'return=minimal'
+          },
+          body: JSON.stringify({
+            id: crypto.randomUUID(),
+            usuarioId: id,
+            valor: 5,
+            criadoEm: new Date().toISOString()
+          })
+        });
+
         if (codigoIndicador) {
-          const r = await fetch(`${baseUrl}/rest/v1/Usuario?select=id&codigoPublico=eq.${codigoIndicador}`, {
-            headers: {
-              apikey: apiKey,
-              Authorization: `Bearer ${apiKey}`
-            }
+          const busca = await fetch(`${baseUrl}/rest/v1/Usuario?select=id&codigoPublico=eq.${codigoIndicador}`, {
+            headers: { apikey: apiKey, Authorization: `Bearer ${apiKey}` }
           });
-          const dados = await r.json();
+          const dados = await busca.json();
           if (dados.length > 0) {
             await fetch(`${baseUrl}/rest/v1/Indicacao`, {
               method: 'POST',
@@ -237,22 +268,6 @@
             });
           }
         }
-
-        await fetch(`${baseUrl}/rest/v1/BonusCadastro`, {
-          method: 'POST',
-          headers: {
-            apikey: apiKey,
-            Authorization: `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-            Prefer: 'return=minimal'
-          },
-          body: JSON.stringify({
-            id: crypto.randomUUID(),
-            usuarioId: id,
-            valor: 5,
-            criadoEm: new Date().toISOString()
-          })
-        });
 
         proximaEtapa();
       } else {

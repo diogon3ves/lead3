@@ -127,6 +127,14 @@
 
     let respostas = {};
     let etapa = 0;
+    let codigoIndicador = null;
+
+    window.onload = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.has('id')) {
+        codigoIndicador = urlParams.get('id');
+      }
+    };
 
     function proximaEtapa() {
       document.getElementById(`etapa${etapa}`).classList.remove('active');
@@ -146,40 +154,16 @@
 
     function formatarCPF(campo) {
       let valor = campo.value.replace(/\D/g, '').slice(0, 11);
-      campo.value = valor.replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/, '$1.$2.$3-$4');
+      campo.value = valor.replace(/(\\d{3})(\\d{3})(\\d{3})(\\d{0,2})/, '$1.$2.$3-$4');
     }
 
     function formatarTelefone(campo) {
       let valor = campo.value.replace(/\D/g, '').slice(0, 11);
       if (valor.length <= 10) {
-        campo.value = valor.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');
+        campo.value = valor.replace(/(\\d{2})(\\d{4})(\\d{0,4})/, '($1) $2-$3');
       } else {
-        campo.value = valor.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3');
+        campo.value = valor.replace(/(\\d{2})(\\d{5})(\\d{0,4})/, '($1) $2-$3');
       }
-    }
-
-    function validarCPF(cpf) {
-      cpf = cpf.replace(/[^\d]+/g, '');
-      if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
-      let soma = 0;
-      for (let i = 0; i < 9; i++) soma += parseInt(cpf.charAt(i)) * (10 - i);
-      let dig1 = 11 - (soma % 11);
-      if (dig1 >= 10) dig1 = 0;
-      if (dig1 !== parseInt(cpf.charAt(9))) return false;
-      soma = 0;
-      for (let i = 0; i < 10; i++) soma += parseInt(cpf.charAt(i)) * (11 - i);
-      let dig2 = 11 - (soma % 11);
-      if (dig2 >= 10) dig2 = 0;
-      return dig2 === parseInt(cpf.charAt(10));
-    }
-
-    async function verificarDuplicado(campo, valor) {
-      const url = `${baseUrl}/rest/v1/Usuario?select=id&${campo}=eq.${encodeURIComponent(valor)}`;
-      const res = await fetch(url, {
-        headers: { apikey: apiKey, Authorization: `Bearer ${apiKey}` }
-      });
-      const dados = await res.json();
-      return dados.length > 0;
     }
 
     async function enviarCadastro() {
@@ -193,25 +177,10 @@
       const erro = document.getElementById('erro');
       erro.textContent = '';
 
-      if (!nome || !validarCPF(cpf) || !nascimento || !telefone || !email || senha.length < 6 || confirmarSenha.length < 6) {
-        erro.textContent = 'Preencha todos os campos corretamente (senha 6+ e CPF válido).';
+      if (!nome || !cpf || !nascimento || !telefone || !email || senha.length < 6 || senha !== confirmarSenha) {
+        erro.textContent = 'Preencha todos os campos corretamente.';
         return;
       }
-
-      if (senha !== confirmarSenha) {
-        erro.textContent = 'As senhas não coincidem.';
-        return;
-      }
-
-      const maiorDeIdade = new Date().getFullYear() - new Date(nascimento).getFullYear() >= 18;
-      if (!maiorDeIdade) {
-        erro.textContent = 'Você precisa ter 18 anos ou mais para continuar.';
-        return;
-      }
-
-      if (await verificarDuplicado('cpf', cpf)) return erro.textContent = 'Este CPF já está cadastrado.';
-      if (await verificarDuplicado('telefone', telefone)) return erro.textContent = 'Este telefone já está cadastrado.';
-      if (await verificarDuplicado('email', email)) return erro.textContent = 'Este e-mail já está cadastrado.';
 
       const id = crypto.randomUUID();
       const codigoPublico = gerarCodigoPublico();
@@ -242,6 +211,33 @@
       });
 
       if (res.ok) {
+        if (codigoIndicador) {
+          const r = await fetch(`${baseUrl}/rest/v1/Usuario?select=id&codigoPublico=eq.${codigoIndicador}`, {
+            headers: {
+              apikey: apiKey,
+              Authorization: `Bearer ${apiKey}`
+            }
+          });
+          const dados = await r.json();
+          if (dados.length > 0) {
+            await fetch(`${baseUrl}/rest/v1/Indicacao`, {
+              method: 'POST',
+              headers: {
+                apikey: apiKey,
+                Authorization: `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+                Prefer: 'return=minimal'
+              },
+              body: JSON.stringify({
+                id: crypto.randomUUID(),
+                quemIndicouId: dados[0].id,
+                quemFoiIndicadoId: id,
+                criadoEm: new Date().toISOString()
+              })
+            });
+          }
+        }
+
         await fetch(`${baseUrl}/rest/v1/BonusCadastro`, {
           method: 'POST',
           headers: {
@@ -257,6 +253,7 @@
             criadoEm: new Date().toISOString()
           })
         });
+
         proximaEtapa();
       } else {
         erro.textContent = 'Erro ao cadastrar. Tente novamente.';

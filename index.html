@@ -112,7 +112,7 @@
 
     <div id="etapa6" class="etapa">
       <div class="titulo">✅ Cadastro ativo!<br><br>Entre em contato agora para acessar a plataforma e começar! 💰</div>
-      <button onclick="window.location.href='https://wa.me/5522976016380?text=Ol%C3%A1%2C%20tenho%20interesse%20em%20participar%20da%20plataforma%20para%20fazer%20uma%20renda%20extra!'">Entrar em Contato</button>
+      <button onclick="window.location.href='https://wa.me/5522976016380?text=Olá,%20tenho%20interesse%20em%20participar%20da%20plataforma%20para%20fazer%20uma%20renda%20extra!'">Entrar em Contato</button>
     </div>
   </div>
 
@@ -120,7 +120,7 @@
   <script>
     const bcrypt = dcodeIO.bcrypt;
     const baseUrl = "https://yzqxhwbrvibckucotsko.supabase.co";
-    const apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl6cXhod2JydmliY2t1Y290c2tvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY4MTI0MTYsImV4cCI6MjA2MjM4ODQxNn0.HQRYCLTT7gRHTndtbly_klN8Oz98sRtOFHRrotVLMbc";
+    const apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...";
     const params = new URLSearchParams(window.location.search);
     const codigoIndicador = params.get("id");
 
@@ -145,17 +145,17 @@
 
     function formatarCPF(campo) {
       let valor = campo.value.replace(/\D/g, '').slice(0, 11);
-      campo.value = valor.replace(/(\\d{3})(\\d{3})(\\d{3})(\\d{0,2})/, '$1.$2.$3-$4');
+      campo.value = valor.replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/, '$1.$2.$3-$4');
     }
 
     function formatarTelefone(campo) {
       let valor = campo.value.replace(/\D/g, '').slice(0, 11);
-      campo.value = valor.replace(/(\\d{2})(\\d{5})(\\d{0,4})/, '($1) $2-$3');
+      campo.value = valor.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3');
     }
 
     function validarCPF(cpf) {
       cpf = cpf.replace(/[^\d]+/g, '');
-      if (cpf.length !== 11 || /^(\d)\\1+$/.test(cpf)) return false;
+      if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
       let soma = 0;
       for (let i = 0; i < 9; i++) soma += parseInt(cpf.charAt(i)) * (10 - i);
       let dig1 = 11 - (soma % 11);

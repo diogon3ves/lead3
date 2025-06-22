@@ -145,17 +145,21 @@
 
     function formatarCPF(campo) {
       let valor = campo.value.replace(/\D/g, '').slice(0, 11);
-      campo.value = valor.replace(/(\\d{3})(\\d{3})(\\d{3})(\\d{0,2})/, '$1.$2.$3-$4');
+      campo.value = valor.replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/, function (_, p1, p2, p3, p4) {
+        return `${p1}.${p2}.${p3}${p4 ? '-' + p4 : ''}`;
+      });
     }
 
     function formatarTelefone(campo) {
       let valor = campo.value.replace(/\D/g, '').slice(0, 11);
-      campo.value = valor.replace(/(\\d{2})(\\d{5})(\\d{0,4})/, '($1) $2-$3');
+      campo.value = valor.replace(/(\d{2})(\d{5})(\d{0,4})/, function (_, p1, p2, p3) {
+        return `(${p1}) ${p2}${p3 ? '-' + p3 : ''}`;
+      });
     }
 
     function validarCPF(cpf) {
       cpf = cpf.replace(/[^\d]+/g, '');
-      if (cpf.length !== 11 || /^(\d)\\1+$/.test(cpf)) return false;
+      if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
       let soma = 0;
       for (let i = 0; i < 9; i++) soma += parseInt(cpf.charAt(i)) * (10 - i);
       let dig1 = 11 - (soma % 11);
